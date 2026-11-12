@@ -59,7 +59,7 @@ MENU ──START──▶ PLAYING ──ball gets past a paddle──▶ GAMEOVE
 |---|---|---|
 | **MENU** | A centered **START** button | Click it, or press **Enter** |
 | **PLAYING** | The game | See controls below |
-| **GAMEOVER** | "GAME OVER", which paddle missed, both scores, and **RESTART** / **MENU** buttons over the dimmed game | Click a button, or press **R** (restart) / **M** (menu) |
+| **GAMEOVER** | On a plain background: "GAME OVER", which paddle missed, both scores, and **RESTART** / **MENU** buttons | Click a button, or press **R** (restart) / **M** (menu) |
 
 Restart and Menu both reset the paddles, the ball and the scores. Buttons light up when the mouse is over them.
 

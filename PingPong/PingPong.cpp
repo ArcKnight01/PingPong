@@ -134,10 +134,6 @@ int main()
 	Button menuButton;
 	menuButton.setup(Candal, "MENU", windowWidth / 2 + 170, windowHeight / 2 + 60);
 
-	//dark see-through layer drawn over the frozen game on the GAMEOVER screen
-	RectangleShape dimOverlay(Vector2f(windowWidth, windowHeight));
-	dimOverlay.setFillColor(Color(0, 0, 0, 150));
-
 	//puts paddles, balls and scores back to the start of a game
 	auto resetGame = [&]() {
 		paddle = Paddle(windowWidth / 2, windowHeight - 20 - 20);
@@ -211,14 +207,9 @@ int main()
 			continue;
 		}
 
-		//GAMEOVER screen: the frozen game, dimmed, with the result and RESTART / MENU
+		//GAMEOVER screen: flat background with the result and RESTART / MENU
 		if (gameState == GAMEOVER) {
-			window.clear(Color(0, 0, 255));
-			window.draw(scoreText);
-			window.draw(enemyScoreText);
-			window.draw(paddle.getShape());
-			window.draw(enemyPaddle.getShape());
-			window.draw(dimOverlay);
+			window.clear(Color(0, 0, 255)); //same blue background as the game
 			window.draw(gameOverText);
 			window.draw(resultText);
 			restartButton.draw(window, mouse);
