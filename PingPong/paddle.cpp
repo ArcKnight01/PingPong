@@ -1,4 +1,4 @@
-#include "paddle.h";
+#include "paddle.h"
 
 Paddle::Paddle(float startX, float startY) {
 	position.x = startX;
