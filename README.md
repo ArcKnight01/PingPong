@@ -1,6 +1,7 @@
 # PingPong
 
-A Ping Pong game created in C++ with SFML: two paddles (bottom and top) and 30 balls at once, with an optional AI for either paddle.
+A Ping Pong game created in C++ with SFML: two paddles (bottom and top) and one ball, with an optional AI for either paddle,
+a start menu and a game-over screen.
 
 Created December 2021.
 
@@ -45,14 +46,31 @@ Open `PingPong.sln` as before.
 
 ---
 
-## Controls
+## Screens (game states)
+The game is a small state machine (`enum GameState` in `PingPong/PingPong.cpp`):
+
+```
+MENU ──START──▶ PLAYING ──ball gets past a paddle──▶ GAMEOVER ──RESTART──▶ PLAYING
+  ▲                                                     │
+  └─────────────────────────MENU────────────────────────┘
+```
+
+| Screen | What you see | Input |
+|---|---|---|
+| **MENU** | A centered **START** button | Click it, or press **Enter** |
+| **PLAYING** | The game | See controls below |
+| **GAMEOVER** | "GAME OVER", which paddle missed, both scores, and **RESTART** / **MENU** buttons over the dimmed game | Click a button, or press **R** (restart) / **M** (menu) |
+
+Restart and Menu both reset the paddles, the ball and the scores. Buttons light up when the mouse is over them.
+
+## Controls (while playing)
 | Input | Effect |
 |---|---|
 | **← / →** | Move the bottom paddle |
 | **A / D** | Move the top paddle |
-| **1** | Let the AI play the top paddle |
+| **1** | Let the AI play the top paddle (on at the start) |
 | **2** | Let the AI play the bottom paddle |
 | **0** | Turn both AIs off |
 | Close window | Quit |
 
-The number of balls is `numBalls` in `PingPong/PingPong.cpp` (currently 30).
+The number of balls is `numBalls` in `PingPong/PingPong.cpp` (currently 1; it was 30).

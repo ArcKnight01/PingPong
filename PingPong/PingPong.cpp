@@ -15,6 +15,46 @@
 using namespace std;
 using namespace sf;
 /* DEFINE GAMESTATES HERE */
+// State machine: which screen the game is on.
+//   MENU     --START (click / Enter)-------------> PLAYING
+//   PLAYING  --ball gets past a paddle-----------> GAMEOVER
+//   GAMEOVER --RESTART (click / R)---------------> PLAYING  (fresh game)
+//   GAMEOVER --MENU    (click / M)---------------> MENU     (fresh game waiting)
+enum GameState {
+	MENU,
+	PLAYING,
+	GAMEOVER
+};
+
+// A simple clickable button: a rectangle with its text centered on it.
+struct Button {
+	RectangleShape box;
+	Text label;
+
+	void setup(const Font& font, const string& text, float centerX, float centerY) {
+		box.setSize(Vector2f(260, 90));
+		box.setOrigin(box.getSize().x / 2, box.getSize().y / 2);
+		box.setPosition(centerX, centerY);
+		box.setOutlineColor(Color::White);
+		box.setOutlineThickness(4);
+
+		label.setFont(font);
+		label.setString(text);
+		label.setCharacterSize(48);
+		label.setFillColor(Color::White);
+		FloatRect bounds = label.getLocalBounds();
+		label.setOrigin(bounds.left + bounds.width / 2, bounds.top + bounds.height / 2);
+		label.setPosition(centerX, centerY);
+	}
+	bool contains(Vector2f point) {
+		return box.getGlobalBounds().contains(point);
+	}
+	void draw(RenderWindow& window, Vector2f mouse) {
+		box.setFillColor(contains(mouse) ? Color(60, 60, 255) : Color(0, 0, 160)); //lighter when hovered
+		window.draw(box);
+		window.draw(label);
+	}
+};
 
 int main()
 { 
@@ -32,7 +72,7 @@ int main()
 	Paddle enemyPaddle(windowWidth / 2, 20);
 
 	//Ball ball(windowWidth / 2, 1);
-	const int numBalls = 30;
+	const int numBalls = 1;
 	Ball balls[numBalls];
 	for (int i = 0; i < numBalls; i++) {
 		balls[i].setPosition(windowWidth / 2 , windowHeight / 2);
@@ -68,6 +108,55 @@ int main()
 	float distYfromPlayer[numBalls];
 
 	/* DEFINE VARIABLES HERE */
+	GameState gameState = MENU; // start on the menu screen
+
+	//MENU: one START button in the middle of the window
+	Button startButton;
+	startButton.setup(Candal, "START", windowWidth / 2, windowHeight / 2);
+
+	//GAMEOVER: "GAME OVER", who missed, and RESTART / MENU buttons side by side
+	Text gameOverText;
+	gameOverText.setFont(Candal);
+	gameOverText.setString("GAME OVER");
+	gameOverText.setCharacterSize(80);
+	gameOverText.setFillColor(Color::White);
+	FloatRect gameOverBounds = gameOverText.getLocalBounds();
+	gameOverText.setOrigin(gameOverBounds.left + gameOverBounds.width / 2, gameOverBounds.top + gameOverBounds.height / 2);
+	gameOverText.setPosition(windowWidth / 2, windowHeight / 2 - 150);
+
+	Text resultText; //set when the game ends (who missed + scores)
+	resultText.setFont(Candal);
+	resultText.setCharacterSize(30);
+	resultText.setFillColor(Color::White);
+
+	Button restartButton;
+	restartButton.setup(Candal, "RESTART", windowWidth / 2 - 170, windowHeight / 2 + 60);
+	Button menuButton;
+	menuButton.setup(Candal, "MENU", windowWidth / 2 + 170, windowHeight / 2 + 60);
+
+	//dark see-through layer drawn over the frozen game on the GAMEOVER screen
+	RectangleShape dimOverlay(Vector2f(windowWidth, windowHeight));
+	dimOverlay.setFillColor(Color(0, 0, 0, 150));
+
+	//puts paddles, balls and scores back to the start of a game
+	auto resetGame = [&]() {
+		paddle = Paddle(windowWidth / 2, windowHeight - 20 - 20);
+		enemyPaddle = Paddle(windowWidth / 2, 20);
+		for (int i = 0; i < numBalls; i++) {
+			balls[i].hitBottom(); //back to the center with a new random direction
+		}
+		score = 0;
+		enemyScore = 0;
+	};
+	//ends the game and fills in the result line
+	auto endGame = [&](const string& whoMissed) {
+		resultText.setString(whoMissed + "   (bottom: " + to_string(score) + "   top: " + to_string(enemyScore) + ")");
+		FloatRect bounds = resultText.getLocalBounds();
+		resultText.setOrigin(bounds.left + bounds.width / 2, bounds.top + bounds.height / 2);
+		resultText.setPosition(windowWidth / 2, windowHeight / 2 - 60);
+		gameState = GAMEOVER;
+	};
+
 	bool enemyMovesLeft = false;
 	bool enemyMovesRight = false;
 	int nearestBallIndex = 0;
@@ -85,6 +174,57 @@ int main()
 				window.close();
 			}
 			/* DEFINE EVENTS (i.e. KEY PRESS & RELEASE) HERE */
+			bool leftClick = (event.type == Event::MouseButtonPressed && event.mouseButton.button == Mouse::Left);
+			Vector2f click;
+			if (leftClick) {
+				click = window.mapPixelToCoords(Vector2i(event.mouseButton.x, event.mouseButton.y));
+			}
+			bool keyPressed = (event.type == Event::KeyPressed);
+
+			if (gameState == MENU) {
+				//START (click it, or press Enter) -> PLAYING
+				if ((leftClick && startButton.contains(click)) || (keyPressed && event.key.code == Keyboard::Enter)) {
+					gameState = PLAYING;
+				}
+			}
+			else if (gameState == GAMEOVER) {
+				//RESTART (click it, or press R) -> PLAYING with a fresh game
+				if ((leftClick && restartButton.contains(click)) || (keyPressed && event.key.code == Keyboard::R)) {
+					resetGame();
+					gameState = PLAYING;
+				}
+				//MENU (click it, or press M) -> back to the START screen
+				else if ((leftClick && menuButton.contains(click)) || (keyPressed && event.key.code == Keyboard::M)) {
+					resetGame();
+					gameState = MENU;
+				}
+			}
+		}
+
+		Vector2f mouse = window.mapPixelToCoords(Mouse::getPosition(window));
+
+		//MENU screen: only the START button; the game waits until it is clicked
+		if (gameState == MENU) {
+			window.clear(Color(0, 0, 255)); //same blue background as the game
+			startButton.draw(window, mouse);
+			window.display();
+			continue;
+		}
+
+		//GAMEOVER screen: the frozen game, dimmed, with the result and RESTART / MENU
+		if (gameState == GAMEOVER) {
+			window.clear(Color(0, 0, 255));
+			window.draw(scoreText);
+			window.draw(enemyScoreText);
+			window.draw(paddle.getShape());
+			window.draw(enemyPaddle.getShape());
+			window.draw(dimOverlay);
+			window.draw(gameOverText);
+			window.draw(resultText);
+			restartButton.draw(window, mouse);
+			menuButton.draw(window, mouse);
+			window.display();
+			continue;
 		}
 
 		float enemyBackY = enemyPaddle.getPosition().top; // back of paddle
@@ -225,19 +365,16 @@ int main()
 				 playerRightX = playerLeftX + paddle.getPosition().width; //right of paddle
 				 playerCenterX = (playerLeftX + playerRightX) / 2;
 
+			//ball got past the top paddle -> GAMEOVER
 			if (balls[i].getPosition().top < 0) {
-				//|| balls[i].getPosition().top < enemyBackY
-				balls[i].hitBottom();
-				enemyScore = 0;
-				//balls[i].reboundPaddleOrTop();
+				endGame("The top paddle missed!");
+				break;
 			}
 
-			//ball hitting bottom
-			if (balls[i].getPosition().top > windowHeight ) {//balls[i].getPosition().top > playerBackY
-				
-				balls[i].hitBottom();
-				score = 0;
-
+			//ball got past the bottom paddle -> GAMEOVER
+			if (balls[i].getPosition().top > windowHeight ) {
+				endGame("The bottom paddle missed!");
+				break;
 			}
 
 			//ball hitting sides
